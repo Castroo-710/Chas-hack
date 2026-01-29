@@ -1,19 +1,21 @@
 # CalSync - Discord to Calendar Bridge
 
-> Ta bort schema-kaoset genom att samla events från Discord till din kalender.
+> Samla events från Discord och webben till en smart kalender-feed (ICS).
 
 ---
 
 ## Projektöversikt
 
+Vi bygger en tjänst som lyssnar på Discord-kanaler och tar emot webb-länkar. En AI-agent parsar informationen till konkreta kalenderhändelser. Användaren får en unik `.ics`-länk att lägga in i sin mobila kalender eller Google Calendar.
+
 | Status | Fas |
 |--------|-----|
 | [ ] | Grundstruktur |
-| [ ] | Discord Bot |
-| [ ] | Backend API |
-| [ ] | Google Calendar Integration |
-| [ ] | Dashboard |
-| [ ] | Polish & Demo |
+| [ ] | Discord Bot (Listener) |
+| [ ] | Backend API & DB |
+| [ ] | ICS Feed Generator |
+| [ ] | AI Agent / Scraper |
+| [ ] | Dashboard UI |
 
 ---
 
@@ -21,66 +23,50 @@
 
 | Person | Område | Huvudfiler |
 |--------|--------|------------|
-| **Person 1** | Discord Bot | `bot/*` |
-| **Person 2** | Backend API & Database | `server/*` |
-| **Person 3** | Google Calendar Integration | `server/services/calendarSync.js` |
-| **Person 4** | Dashboard UI | `dashboard/*` |
+| **Person 1** | Discord Bot (Lyssna & Skicka till API) | `bot/*` |
+| **Person 2** | Backend API, Databas & ICS-generering | `server/*` |
+| **Person 3** | AI Agent & Web Scraper Integration | `server/services/*` |
+| **Person 4** | Dashboard UI (Visa events & ge ut URL) | `dashboard/*` |
 
 ---
 
 ## Steg-för-steg Plan
 
-### Fas 1: Setup (Alla tillsammans)
+### Fas 1: Setup
 - [ ] Klona repo och kör `npm install`
-- [ ] Skapa `.env` fil med tokens (se `.env.example`)
-- [ ] Skapa Discord Application på https://discord.com/devers
-- [ ] Skapa Google Cloud Project för Calendar API
+- [ ] Skapa `.env` fil
+- [ ] Skapa Discord Application
 
 ### Fas 2: Parallellt arbete
 
 #### Person 1 - Discord Bot
-- [ ] Sätt upp grundläggande bot med discord.js
-- [ ] Implementera `/watch` kommando (välj kanal att bevaka)
-- [ ] Implementera `/unwatch` kommando
-- [ ] Implementera `/list` kommando (visa bevakade kanaler)
-- [ ] Lyssna på nya meddelanden i bevakade kanaler
-- [ ] Lyssna på Discord Scheduled Events
-- [ ] Skicka events till backend API
+- [ ] Implementera `/watch` kommando (starta bevakning av kanal)
+- [ ] Lyssna på `messageCreate`
+- [ ] Filtrera bort spam/korta meddelanden
+- [ ] Skicka potentiella event-texter till Backend API (`POST /api/ingest`)
 
-#### Person 2 - Backend API
-- [ ] Sätt upp Express server
-- [ ] Skapa SQLite databas schema
-- [ ] `POST /api/events` - ta emot events från bot
-- [ ] `GET /api/events` - hämta alla events
-- [ ] `DELETE /api/events/:id` - ta bort event
-- [ ] `GET /api/channels` - hämta bevakade kanaler
-- [ ] `POST /api/channels` - lägg till kanal att bevaka
+#### Person 2 - Backend API & DB
+- [ ] Sätt upp SQLite med `better-sqlite3`
+- [ ] Skapa tabeller: `users`, `sources` (kanaler/url), `events`
+- [ ] `POST /api/ingest` - Ta emot råtext, skicka till AI-service, spara svar
+- [ ] `GET /api/calendar/:token.ics` - Generera ICS-fil dynamiskt
+- [ ] CRUD-endpoints för Dashboarden (redigera felaktiga events)
 
-#### Person 3 - Calendar Integration
-- [ ] Sätt upp Google Calendar API auth (OAuth2)
-- [ ] Implementera `createEvent()` funktion
-- [ ] Implementera `updateEvent()` funktion
-- [ ] Implementera `deleteEvent()` funktion
-- [ ] AI-parsning av meddelanden (extrahera datum/tid)
-- [ ] Generera .ics fil som alternativ export
+#### Person 3 - AI & Scraping
+- [ ] Konfigurera OpenRouter / OpenAI klient
+- [ ] Skapa prompt för att extrahera JSON (Titel, Start, Slut, Beskrivning) från ostrukturerad text
+- [ ] Bygg "Scrape URL" funktion (hämta HTML-text -> AI -> JSON)
+- [ ] Hantera datumformat (hårdkodat till Svensk tid/CET)
 
 #### Person 4 - Dashboard
-- [ ] Sätt upp React/Vite projekt
-- [ ] Skapa layout med navbar
-- [ ] Visa lista över kommande events
-- [ ] Visa bevakade kanaler med toggle on/off
-- [ ] Inställningssida för Google Calendar koppling
-- [ ] Responsiv design
+- [ ] Inloggning (enkel, t.ex. JWT eller bara en "User ID" generator för hackathon)
+- [ ] Vy: "Mina Events" (Lista där man kan ta bort/redigera det AI hittat)
+- [ ] Vy: "Lägg till Källa" (Klistra in URL eller instruktioner för boten)
+- [ ] Komponent: "Din Kalender Länk" (Kopiera-knapp för .ics url)
 
-### Fas 3: Integration
-- [ ] Koppla ihop bot → backend → calendar
-- [ ] Testa hela flödet
-- [ ] Fixa buggar
-
-### Fas 4: Demo & Polish
-- [ ] Skapa demo-presentation
-- [ ] Dokumentera hur man kör projektet
-- [ ] Spela in demo-video (backup)
+### Fas 3: Integration & Polish
+- [ ] Testa att prenumerera på kalendern i iPhone/Google
+- [ ] Finjustera AI-prompts för bättre datumtolkning
 
 ---
 
@@ -90,183 +76,23 @@
 Bot:        discord.js v14
 Backend:    Node.js + Express
 Database:   SQLite (better-sqlite3)
-AI:         OpenAI API / Anthropic API
-Calendar:   Google Calendar API
+AI:         OpenRouter API (Accessing OpenAI/Claude etc)
+Format:     iCalendar (.ics) via 'ics' npm package
 Dashboard:  React + Vite
-Styling:    Tailwind CSS
 ```
 
 ---
 
-## Git Workflow
+## Databas Schema (Preliminärt)
 
-### Branch-strategi
-
-```
-main (protected)
-  │
-  └── dev (integration branch)
-        │
-        ├── feature/discord-bot      (Person 1)
-        ├── feature/backend-api      (Person 2)
-        ├── feature/calendar-sync    (Person 3)
-        └── feature/dashboard        (Person 4)
-```
-
-### Regler
-
-1. **Aldrig pusha direkt till `main` eller `dev`**
-2. **Varje person arbetar på sin egen feature-branch**
-3. **Synka med dev ofta** (minst 1 gång per dag)
-
-### Dagligt arbetsflöde
-
-```bash
-# 1. Börja dagen - hämta senaste från dev
-git checkout dev
-git pull origin dev
-git checkout feature/din-branch
-git merge dev
-
-# 2. Arbeta och committa ofta
-git add .
-git commit -m "feat: beskrivande meddelande"
-
-# 3. Pusha din branch
-git push origin feature/din-branch
-
-# 4. När feature är klar - skapa Pull Request till dev
-# Gör detta via GitHub/GitLab UI
-```
-
-### Commit-meddelanden (Conventional Commits)
-
-```
-feat:     Ny funktionalitet
-fix:      Buggfix
-docs:     Dokumentation
-style:    Formatering (ingen kodändring)
-refactor: Omstrukturering av kod
-test:     Tester
-chore:    Övrigt (dependencies, config)
-```
-
-**Exempel:**
-```bash
-git commit -m "feat: add /watch command to discord bot"
-git commit -m "fix: handle empty messages in event parser"
-git commit -m "docs: update README with setup instructions"
-```
-
-### Pull Request Process
-
-1. Skapa PR från din feature-branch → dev
-2. Beskriv vad du gjort
-3. Minst 1 person granskar (snabb review räcker)
-4. Mergea via "Squash and merge"
-5. Ta bort feature-branch efter merge
-
-### Undvik Merge Conflicts
-
-| Gör | Gör inte |
-|-----|----------|
-| Arbeta i separata mappar | Redigera samma fil som någon annan |
-| Mergea dev ofta | Vänta länge med att synka |
-| Små, ofta commits | Stora commits med många ändringar |
-| Kommunicera i Discord | Anta att ingen annan jobbar på samma sak |
+**events**
+- id (uuid)
+- user_id
+- title (string)
+- description (text)
+- start_time (datetime ISO)
+- end_time (datetime ISO)
+- source_url (string, origin)
+- created_at
 
 ---
-
-## Mappstruktur
-
-```
-chas-hack/
-├── bot/
-│   ├── index.js              # Bot entry point
-│   ├── commands/
-│   │   ├── watch.js          # /watch command
-│   │   ├── unwatch.js        # /unwatch command
-│   │   └── list.js           # /list command
-│   └── listeners/
-│       ├── messageCreate.js  # Lyssna på meddelanden
-│       └── guildScheduled.js # Lyssna på Discord events
-│
-├── server/
-│   ├── index.js              # Express entry point
-│   ├── routes/
-│   │   ├── events.js         # /api/events routes
-│   │   └── channels.js       # /api/channels routes
-│   ├── services/
-│   │   ├── eventParser.js    # AI-parsning av text → event
-│   │   └── calendarSync.js   # Google Calendar API
-│   └── db/
-│       ├── schema.sql        # Databas schema
-│       └── index.js          # Databas connection
-│
-├── dashboard/
-│   ├── src/
-│   │   ├── App.jsx
-│   │   ├── components/
-│   │   └── pages/
-│   ├── package.json
-│   └── vite.config.js
-│
-├── .env.example              # Mall för miljövariabler
-├── .gitignore
-├── package.json
-├── projectstatus.md          # Denna fil
-└── README.md
-```
-
----
-
-## Miljövariabler (.env)
-
-```env
-# Discord
-DISCORD_TOKEN=din_bot_token
-DISCORD_CLIENT_ID=din_client_id
-
-# Google Calendar
-GOOGLE_CLIENT_ID=din_google_client_id
-GOOGLE_CLIENT_SECRET=din_google_secret
-GOOGLE_REDIRECT_URI=http://localhost:3000/auth/callback
-
-# AI (välj en)
-OPENAI_API_KEY=din_openai_key
-ANTHROPIC_API_KEY=din_anthropic_key
-
-# Server
-PORT=3000
-DATABASE_PATH=./server/db/database.sqlite
-```
-
----
-
-## Snabbkommandon
-
-```bash
-# Starta allt (från root)
-npm run dev
-
-# Endast bot
-npm run bot
-
-# Endast server
-npm run server
-
-# Endast dashboard
-npm run dashboard
-```
-
----
-
-## Kontakt & Kommunikation
-
-- **Discord-kanal:** #hackathon-team
-- **Snabba frågor:** Skriv i Discord
-- **Blockers:** Säg till direkt, vänta inte
-
----
-
-*Senast uppdaterad: 2025-01-29*
