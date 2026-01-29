@@ -19,61 +19,64 @@ function initDatabase() {
 }
 
 // Users
-function createUser(username, calendarToken) {
+function ensureUserExists(discordId, username) {
+  // Kolla om användaren finns
+  const user = db.prepare('SELECT * FROM users WHERE discord_id = ?').get(discordId);
+  
+  if (user) return user;
+
+  // Skapa ny användare om den inte finns
+  // Generera en slumpmässig calendar_token
+  const token = require('crypto').randomBytes(16).toString('hex');
+  
   const stmt = db.prepare(`
-    INSERT INTO users (username, calendar_token)
-    VALUES (?, ?)
+    INSERT INTO users (username, discord_id, calendar_token)
+    VALUES (?, ?, ?)
   `);
-  return stmt.run(username, calendarToken);
-}
-
-function getUserByToken(token) {
-  const stmt = db.prepare('SELECT * FROM users WHERE calendar_token = ?');
-  return stmt.get(token);
-}
-
-function getUserById(id) {
-  const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
-  return stmt.get(id);
+  stmt.run(username, discordId, token);
+  
+  return db.prepare('SELECT * FROM users WHERE discord_id = ?').get(discordId);
 }
 
 // Watched Channels
-function addWatchedChannel(guildId, channelId, channelName, userId = null) {
+function addWatchedChannel(guildId, channelId, channelName, discordId) {
   const stmt = db.prepare(`
-    INSERT OR IGNORE INTO watched_channels (guild_id, channel_id, channel_name, user_id)
+    INSERT OR IGNORE INTO watched_channels (guild_id, channel_id, channel_name, user_discord_id)
     VALUES (?, ?, ?, ?)
   `);
-  return stmt.run(guildId, channelId, channelName, userId);
+  return stmt.run(guildId, channelId, channelName, discordId);
 }
 
-function removeWatchedChannel(channelId) {
-  const stmt = db.prepare('DELETE FROM watched_channels WHERE channel_id = ?');
-  return stmt.run(channelId);
+function removeWatchedChannel(channelId, discordId) {
+  const stmt = db.prepare('DELETE FROM watched_channels WHERE channel_id = ? AND user_discord_id = ?');
+  return stmt.run(channelId, discordId);
 }
 
-function getWatchedChannels(guildId) {
-  const stmt = db.prepare('SELECT * FROM watched_channels WHERE guild_id = ?');
-  return stmt.all(guildId);
+// Hämta alla kanaler som en specifik användare bevakar
+function getUserWatchedChannels(discordId) {
+  const stmt = db.prepare('SELECT * FROM watched_channels WHERE user_discord_id = ?');
+  return stmt.all(discordId);
 }
 
-function getAllWatchedChannels() {
-  const stmt = db.prepare('SELECT * FROM watched_channels');
-  return stmt.all();
+// Hämta alla användare som bevakar en specifik kanal (för Listener)
+function getUsersWatchingChannel(channelId) {
+  const stmt = db.prepare('SELECT user_discord_id FROM watched_channels WHERE channel_id = ?');
+  return stmt.all(channelId);
 }
 
-function isChannelWatched(channelId) {
-  const stmt = db.prepare('SELECT 1 FROM watched_channels WHERE channel_id = ?');
+function isChannelWatchedAnywhere(channelId) {
+  const stmt = db.prepare('SELECT 1 FROM watched_channels WHERE channel_id = ? LIMIT 1');
   return stmt.get(channelId) !== undefined;
 }
 
 // Events
 function addEvent(event) {
   const stmt = db.prepare(`
-    INSERT INTO events (user_id, title, description, location, start_time, end_time, source_url)
+    INSERT INTO events (discord_user_id, title, description, location, start_time, end_time, source_url)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
   return stmt.run(
-    event.userId,
+    event.discordUserId,
     event.title,
     event.description,
     event.location,
@@ -83,43 +86,14 @@ function addEvent(event) {
   );
 }
 
-function getEventsForUser(userId, limit = 50) {
-  const stmt = db.prepare(`
-    SELECT * FROM events
-    WHERE user_id = ?
-    ORDER BY start_time ASC
-    LIMIT ?
-  `);
-  return stmt.all(userId, limit);
-}
-
-function getUpcomingEventsForUser(userId) {
-  const stmt = db.prepare(`
-    SELECT * FROM events
-    WHERE user_id = ? AND start_time >= datetime('now')
-    ORDER BY start_time ASC
-  `);
-  return stmt.all(userId);
-}
-
-function deleteEvent(id) {
-  const stmt = db.prepare('DELETE FROM events WHERE id = ?');
-  return stmt.run(id);
-}
-
 module.exports = {
   db,
   initDatabase,
-  createUser,
-  getUserByToken,
-  getUserById,
+  ensureUserExists,
   addWatchedChannel,
   removeWatchedChannel,
-  getWatchedChannels,
-  getAllWatchedChannels,
-  isChannelWatched,
+  getUserWatchedChannels,
+  getUsersWatchingChannel,
+  isChannelWatchedAnywhere,
   addEvent,
-  getEventsForUser,
-  getUpcomingEventsForUser,
-  deleteEvent,
 };

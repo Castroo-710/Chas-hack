@@ -1,16 +1,25 @@
-// Lyssnar på nya meddelanden i bevakade kanaler
+const { Events } = require('discord.js');
+const { isChannelWatchedAnywhere } = require('../../server/db/index');
 
 module.exports = {
-  name: 'messageCreate',
-
+  name: Events.MessageCreate,
   async execute(message) {
-    // Ignorera bot-meddelanden
+    // 1. Ignorera bottar
     if (message.author.bot) return;
 
-    // TODO: Kolla om kanalen är bevakad
-    // TODO: Skicka meddelandet till backend för AI-parsning
-    // TODO: await fetch('http://localhost:3000/api/events', { ... })
+    // 2. Kolla om kanalen övervakas av NÅGON
+    if (!isChannelWatchedAnywhere(message.channelId)) return;
 
-    console.log(`Nytt meddelande i ${message.channel.name}: ${message.content}`);
+    // 3. Kolla om meddelandet innehåller en URL
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const hasUrl = urlRegex.test(message.content);
+
+    if (!hasUrl) return;
+
+    console.log(`[Bot Listener] Länk hittad i #${message.channel.name}. Skickas till analys...`);
+
+    // 4. Skicka till Backend API (TODO: Person 2)
+    // Backend API kommer sen kolla vilka användare som prenumererar på denna kanal
+    // och skapa events för dem.
   },
 };

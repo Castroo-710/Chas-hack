@@ -10,8 +10,8 @@ Vi bygger en tjänst som lyssnar på Discord-kanaler och tar emot webb-länkar. 
 
 | Status | Fas |
 |--------|-----|
-| [ ] | Grundstruktur |
-| [ ] | Discord Bot (Listener) |
+| [x] | Grundstruktur |
+| [x] | Discord Bot (Listener & Commands) |
 | [ ] | Backend API & DB |
 | [ ] | ICS Feed Generator |
 | [ ] | AI Agent / Scraper |
@@ -33,21 +33,21 @@ Vi bygger en tjänst som lyssnar på Discord-kanaler och tar emot webb-länkar. 
 ## Steg-för-steg Plan
 
 ### Fas 1: Setup
-- [ ] Klona repo och kör `npm install`
-- [ ] Skapa `.env` fil
-- [ ] Skapa Discord Application
+- [x] Klona repo och kör `npm install`
+- [x] Skapa `.env` fil
+- [x] Uppdatera DB schema för Multi-User support
 
 ### Fas 2: Parallellt arbete
 
 #### Person 1 - Discord Bot
-- [ ] Implementera `/watch` kommando (starta bevakning av kanal)
-- [ ] Lyssna på `messageCreate`
-- [ ] Filtrera bort spam/korta meddelanden
+- [x] Implementera `/watch` kommando (Personlig prenumeration)
+- [x] Implementera `/list` kommando (Visa mina kanaler + ICS länk)
+- [x] Lyssna på `messageCreate` (med URL-filter)
 - [ ] Skicka potentiella event-texter till Backend API (`POST /api/ingest`)
 
 #### Person 2 - Backend API & DB
-- [ ] Sätt upp SQLite med `better-sqlite3`
-- [ ] Skapa tabeller: `users`, `sources` (kanaler/url), `events`
+- [x] Sätt upp SQLite med `better-sqlite3`
+- [x] Skapa tabeller: `users`, `watched_channels` (prenumerationer), `events`
 - [ ] `POST /api/ingest` - Ta emot råtext, skicka till AI-service, spara svar
 - [ ] `GET /api/calendar/:token.ics` - Generera ICS-fil dynamiskt
 - [ ] CRUD-endpoints för Dashboarden (redigera felaktiga events)
@@ -83,16 +83,18 @@ Dashboard:  React + Vite
 
 ---
 
-## Databas Schema (Preliminärt)
+## Databas Schema
+
+**users**
+- id, username, discord_id, calendar_token (unique)
+
+**watched_channels**
+- id, channel_id, user_discord_id (who subscribed), guild_id
 
 **events**
-- id (uuid)
-- user_id
-- title (string)
-- description (text)
-- start_time (datetime ISO)
-- end_time (datetime ISO)
-- source_url (string, origin)
-- created_at
+- id, discord_user_id (owner), title, description, start_time, end_time, source_url
 
 ---
+
+## Git Workflow
+*Samma som tidigare: arbeta i feature-branches, merga till dev.*
