@@ -1,5 +1,6 @@
 -- schema.sql
-ALTER DATABASE defaultdb SET timezone TO 'Europe/Stockholm';
+-- Database timezone should be set at session level or user level if needed
+
 
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,

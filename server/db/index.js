@@ -5,13 +5,14 @@ const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-require('dotenv').config();
+// Load env vars from project root if not already loaded
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
-console.log("🔌 Initializing Database Module..."); // Instant log to prove it's running
+console.log("🔌 Initializing Database Module...");
 
 // 1. Connection Setup
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL, 
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
@@ -48,11 +49,11 @@ async function initDatabase() {
 
     console.log(`📜 Found schema at: ${schemaPath}`);
     const schema = fs.readFileSync(schemaPath, 'utf-8');
-    
+
     console.log('⏳ Executing schema on Aiven PostgreSQL...');
     await client.query(schema);
     console.log('✅ PostgreSQL Database initialized (Stockholm Timezone Active)');
-    
+
   } catch (err) {
     console.error('❌ Error initializing database:', err);
     throw err;
@@ -65,7 +66,7 @@ async function initDatabase() {
 async function runDiagnostic() {
   try {
     console.log('🧪 Running Database Diagnostic...');
-    
+
     // Check Timezone
     const timeRes = await pool.query("SELECT NOW(), CURRENT_SETTING('timezone') as zone");
     console.log(`🕒 Database Time: ${timeRes.rows[0].now}`);
@@ -126,11 +127,24 @@ async function isChannelWatchedAnywhere(channelId) {
 }
 
 async function addEvent(event) {
+  // First, find the internal user ID based on Discord ID
+  const userRes = await pool.query('SELECT id FROM users WHERE discord_id = $1', [event.discordUserId]);
+
+  let userId = null;
+  if (userRes.rows.length > 0) {
+    userId = userRes.rows[0].id;
+  } else {
+    console.warn(`⚠️ Warning: agile event added for unknown Discord User: ${event.discordUserId}`);
+  }
+
   const query = `
-    INSERT INTO events (discord_user_id, title, description, location, start_time, end_time, source_url)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    INSERT INTO events (user_id, discord_user_id, title, description, location, start_time, end_time, source_url)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING *
   `;
+
   return await pool.query(query, [
+    userId,
     event.discordUserId,
     event.title,
     event.description,
@@ -142,18 +156,25 @@ async function addEvent(event) {
 }
 
 // 5. Startup Execution
-(async () => {
-  try {
-    await initDatabase();
-    await runDiagnostic();
-    console.log('🚀 App ready for Discord events.');
-  } catch (e) {
-    console.error("Critical error during startup:", e);
-  }
-})();
+// 5. Startup Execution (Only if run directly)
+if (require.main === module) {
+  (async () => {
+    try {
+      await initDatabase();
+      await runDiagnostic();
+      console.log('✅ Database preparation complete. Exiting setup script.');
+      await pool.end();
+      process.exit(0);
+    } catch (e) {
+      console.error("Critical error during startup:", e);
+      process.exit(1);
+    }
+  })();
+}
 
 module.exports = {
   pool,
+  initDatabase,
   ensureUserExists,
   addWatchedChannel,
   removeWatchedChannel,
