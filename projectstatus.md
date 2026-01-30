@@ -12,7 +12,7 @@ Vi bygger en tjänst som lyssnar på Discord-kanaler och tar emot webb-länkar. 
 |--------|-----|
 | [x] | Grundstruktur |
 | [x] | Discord Bot (Listener & Commands) |
-| [ ] | Backend API & DB |
+| [ ] | Backend API (Auth klart, Ingest/ICS kvar) |
 | [ ] | ICS Feed Generator |
 | [ ] | AI Agent / Scraper |
 | [ ] | Dashboard UI |
@@ -48,6 +48,8 @@ Vi bygger en tjänst som lyssnar på Discord-kanaler och tar emot webb-länkar. 
 #### Person 2 - Backend API & DB
 - [x] Sätt upp SQLite med `better-sqlite3`
 - [x] Skapa tabeller: `users`, `watched_channels`, `events`
+- [x] Implementera JWT Auth (`/api/auth/login`, `/api/auth/me`)
+- [x] Skapa Auth Middleware
 - [ ] `POST /api/ingest` - Ta emot råtext, skicka till AI-service, spara svar
 - [ ] `GET /api/calendar/:token.ics` - Generera ICS-fil dynamiskt
 - [ ] CRUD-endpoints för Dashboarden (redigera felaktiga events)
@@ -74,7 +76,7 @@ Vi bygger en tjänst som lyssnar på Discord-kanaler och tar emot webb-länkar. 
 
 ```
 Bot:        discord.js v14
-Backend:    Node.js + Express
+Backend:    Node.js + Express + JWT
 Database:   SQLite (better-sqlite3)
 AI:         OpenRouter API (Accessing OpenAI/Claude etc)
 Format:     iCalendar (.ics) via 'ics' npm package
@@ -93,6 +95,14 @@ Dashboard:  React + Vite
 
 **events**
 - id, discord_user_id (owner), title, description, start_time, end_time, source_url
+
+---
+
+## API Endpoints
+
+**Auth**
+- `POST /api/auth/login` (Body: `{username, discordId}`)
+- `GET /api/auth/me` (Header: `Authorization: Bearer <token>`)
 
 ---
 

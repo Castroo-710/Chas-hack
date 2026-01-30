@@ -176,6 +176,7 @@ module.exports = {
   pool,
   initDatabase,
   ensureUserExists,
+  getUserById,
   addWatchedChannel,
   removeWatchedChannel,
   getUserWatchedChannels,

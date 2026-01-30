@@ -25,11 +25,10 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle('Dina bevakade kanaler 📅')
       .setDescription(listString)
-      .addFields({
-        name: 'Din Kalender Länk (.ics)',
-        value: `\`${process.env.DASHBOARD_URL || 'http://localhost:3000'}/api/calendar/${dbUser.calendar_token}.ics`\`
-      })
-      .setColor(0x00FF00);
+            .addFields({ 
+              name: 'Din Kalender Länk (.ics)', 
+              value: `\`${process.env.DASHBOARD_URL || 'http://localhost:3000'}/api/calendar/${dbUser.calendar_token}.ics\`` 
+            })      .setColor(0x00FF00);
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
   },
