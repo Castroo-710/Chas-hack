@@ -20,7 +20,7 @@ export interface Event {
 interface EventCardProps {
   event: Event;
   onClick?: () => void;
-  onTogglePin?: (event: Event) => void;
+  onTogglePin?: (eventId: string) => void;
 }
 
 const eventTypeColors: Record<Event["type"], string> = {
@@ -84,7 +84,7 @@ export function EventCard({ event, onClick, onTogglePin }: EventCardProps) {
               className="size-8 flex-shrink-0"
               onClick={(e) => {
                 e.stopPropagation();
-                onTogglePin(event);
+                onTogglePin(event.id);
               }}
             >
               <Pin

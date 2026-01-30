@@ -6,7 +6,7 @@ interface EventsListProps {
   events: Event[];
   onEventClick: (event: Event) => void;
   onAddClick: () => void;
-  onTogglePin: (event: Event) => void;
+  onTogglePin: (eventId: string) => void;
 }
 
 export function EventsList({ events, onEventClick, onAddClick, onTogglePin }: EventsListProps) {
