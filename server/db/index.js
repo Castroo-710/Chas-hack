@@ -38,6 +38,11 @@ function ensureUserExists(discordId, username) {
   return db.prepare('SELECT * FROM users WHERE discord_id = ?').get(discordId);
 }
 
+function getUserById(id) {
+  const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
+  return stmt.get(id);
+}
+
 // Watched Channels
 function addWatchedChannel(guildId, channelId, channelName, discordId) {
   const stmt = db.prepare(`
@@ -90,6 +95,7 @@ module.exports = {
   db,
   initDatabase,
   ensureUserExists,
+  getUserById,
   addWatchedChannel,
   removeWatchedChannel,
   getUserWatchedChannels,
