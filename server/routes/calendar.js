@@ -1,46 +1,88 @@
-const { getUserByToken, getEventsForUser } = require('../db/index');
-const { createIcsFeed } = require('../services/icsGenerator');
+const express = require('express');
+const router = express.Router();
+const ics = require('ics');
+const { pool } = require('../db/index');
 
-async function calendarRoutes(fastify, options) {
-  
-  // GET /api/calendar/:token.ics
-  fastify.get('/:token.ics', async (request, reply) => {
-    const { token } = request.params;
+// GET /api/calendar/:token.ics
+router.get('/:token.ics', async (req, res) => {
+    const { token } = req.params;
 
     try {
-      // 1. Validera token
-      // Notera: getUserByToken är async nu
-      const user = await getUserByToken(token);
-      
-      if (!user) {
-        return reply.code(404).send('Kalender hittades inte');
-      }
+        // 1. Hitta användaren baserat på token
+        const userResult = await pool.query(
+            'SELECT * FROM users WHERE calendar_token = $1',
+            [token]
+        );
 
-      // 2. Hämta events för denna användare
-      // Vi måste lägga till getEventsForUser i db/index.js (PG-versionen) om den saknas
-      const events = await getEventsForUser(user.id);
+        if (userResult.rows.length === 0) {
+            return res.status(404).send('Calendar not found');
+        }
 
-      if (events.length === 0) {
-        // Returnera en tom kalender hellre än 404, så klienter inte klagar
-        return reply
-          .header('Content-Type', 'text/calendar')
-          .send('BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//CalSync//EN\nEND:VCALENDAR');
-      }
+        const user = userResult.rows[0];
 
-      // 3. Generera ICS
-      const icsData = await createIcsFeed(events);
+        // 2. Hitta alla events för denna användare
+        const eventsResult = await pool.query(
+            'SELECT * FROM events WHERE discord_user_id = $1 ORDER BY start_time ASC',
+            [user.discord_id]
+        );
 
-      // 4. Skicka som fil
-      return reply
-        .header('Content-Type', 'text/calendar')
-        .header('Content-Disposition', `attachment; filename="calsync-${user.username}.ics"`)
-        .send(icsData);
+        const dbEvents = eventsResult.rows;
+
+        if (dbEvents.length === 0) {
+            // Skapa ett placeholder-event så kalendern inte är helt tom
+            const { error, value } = ics.createEvent({
+                start: [2024, 1, 1, 0, 0],
+                duration: { hours: 1 },
+                title: 'Välkommen till CalSync!',
+                description: 'Dina events kommer dyka upp här automatiskt.',
+            });
+            res.setHeader('Content-Type', 'text/calendar');
+            return res.send(value);
+        }
+
+        // 3. Formatera för 'ics' paketet
+        const calendarEvents = dbEvents.map(event => {
+            const start = new Date(event.start_time);
+            const end = event.end_time ? new Date(event.end_time) : new Date(start.getTime() + 60 * 60 * 1000);
+
+            return {
+                start: [
+                    start.getFullYear(),
+                    start.getMonth() + 1,
+                    start.getDate(),
+                    start.getHours(),
+                    start.getMinutes()
+                ],
+                end: [
+                    end.getFullYear(),
+                    end.getMonth() + 1,
+                    end.getDate(),
+                    end.getHours(),
+                    end.getMinutes()
+                ],
+                title: event.title,
+                description: event.description || '',
+                location: event.location || '',
+                url: event.source_url || undefined
+            };
+        });
+
+        const { error, value } = ics.createEvents(calendarEvents);
+
+        if (error) {
+            console.error('ICS generation error:', error);
+            return res.status(500).send('Error generating calendar');
+        }
+
+        // 4. Skicka filen
+        res.setHeader('Content-Type', 'text/calendar');
+        res.setHeader('Content-Disposition', `attachment; filename="calendar.ics"`);
+        res.send(value);
 
     } catch (error) {
-      fastify.log.error(error);
-      return reply.code(500).send('Kunde inte generera kalender');
+        console.error('Calendar error:', error);
+        res.status(500).send('Internal Server Error');
     }
-  });
-}
+});
 
-module.exports = calendarRoutes;
+module.exports = router;

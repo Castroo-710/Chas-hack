@@ -15,14 +15,22 @@ interface EventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTogglePin?: (eventId: string) => void;
+  onDelete?: (eventId: string) => void;
 }
 
-export function EventDialog({ event, open, onOpenChange, onTogglePin }: EventDialogProps) {
+export function EventDialog({ event, open, onOpenChange, onTogglePin, onDelete }: EventDialogProps) {
   if (!event) return null;
 
   const handleTogglePin = () => {
     if (onTogglePin) {
       onTogglePin(event.id);
+    }
+  };
+
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(event.id);
+      onOpenChange(false);
     }
   };
 
@@ -110,7 +118,7 @@ export function EventDialog({ event, open, onOpenChange, onTogglePin }: EventDia
               <Pin className={`size-4 mr-2 ${event.pinned ? "fill-current" : ""}`} />
               {event.pinned ? "Unpin" : "Pin Event"}
             </Button>
-            <Button variant="outline" className="flex-1">
+            <Button variant="outline" className="flex-1" onClick={handleDelete}>
               Delete
             </Button>
           </div>

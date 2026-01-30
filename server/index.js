@@ -25,9 +25,21 @@ fastify.register(authRoutes, { prefix: '/api/auth' });
 fastify.register(ingestRoutes, { prefix: '/api/ingest' });
 fastify.register(calendarRoutes, { prefix: '/api/calendar' });
 
-// Health Check
-fastify.get('/', async (request, reply) => {
-  return { message: 'CalSync API is running (Fastify + Postgres)' };
+// Auth Routes
+app.use('/api/auth', authRouter);
+
+// Ingest Routes
+app.use('/api/ingest', require('./routes/ingest'));
+
+// Event Routes
+app.use('/api/events', require('./routes/events'));
+
+// Calendar Routes (Public ICS)
+app.use('/api/calendar', require('./routes/calendar'));
+
+// Basic Route
+app.get('/', (req, res) => {
+  res.json({ message: 'CalSync API is running' });
 });
 
 // Start server

@@ -16,6 +16,7 @@ interface ConnectedAccount {
   icon: string;
   connected: boolean;
   description: string;
+  redirectUrl?: string;
 }
 
 interface ConnectedAccountsDialogProps {
@@ -31,6 +32,14 @@ export function ConnectedAccountsDialog({
   connectedAccounts,
   onToggleAccount,
 }: ConnectedAccountsDialogProps) {
+  const handleConnect = (account: ConnectedAccount) => {
+    if (!account.connected && account.redirectUrl) {
+      window.open(account.redirectUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    onToggleAccount(account.id);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
@@ -64,7 +73,7 @@ export function ConnectedAccountsDialog({
                 <Button
                   variant={account.connected ? "outline" : "default"}
                   size="sm"
-                  onClick={() => onToggleAccount(account.id)}
+                  onClick={() => handleConnect(account)}
                   className="gap-2"
                 >
                   {account.connected ? (

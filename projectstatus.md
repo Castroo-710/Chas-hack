@@ -50,15 +50,15 @@ Vi bygger en tjänst som lyssnar på Discord-kanaler och tar emot webb-länkar. 
 - [x] Skapa tabeller: `users`, `watched_channels`, `events`
 - [x] Implementera JWT Auth (`/api/auth/login`, `/api/auth/me`)
 - [x] Skapa Auth Middleware
-- [ ] `POST /api/ingest` - Endpoint för att ta emot data från boten (Saknas)
-- [ ] `GET /api/calendar/:token.ics` - Generera ICS-fil dynamiskt (Saknas)
-- [ ] CRUD-endpoints för Dashboarden (Redigera/Ta bort events)
+- [x] `POST /api/ingest` - Ta emot råtext, skicka till AI-service, spara svar
+- [ ] `GET /api/calendar/:token.ics` - Generera ICS-fil dynamiskt
+- [ ] CRUD-endpoints för Dashboarden (redigera felaktiga events)
 
-#### Person 3 - AI & Scraping (EJ PÅBÖRJAD)
-*OBS: Gamla filer finns i `server/services/` men måste skrivas om.*
-- [ ] Konfigurera OpenRouter / OpenAI klient
-- [ ] Skapa prompt för att extrahera JSON (Titel, Start, Slut, Beskrivning)
-- [ ] Implementera `parseEventText(text)` service
+#### Person 3 - AI & Scraping
+- [x] Konfigurera OpenRouter / OpenAI klient
+- [x] Skapa prompt för att extrahera JSON (Titel, Start, Slut, Beskrivning) från ostrukturerad text
+- [x] Bygg "Scrape URL" funktion (hämta HTML-text -> AI -> JSON)
+- [ ] Hantera datumformat (hårdkodat till Svensk tid/CET)
 
 #### Person 4 - Dashboard (EJ PÅBÖRJAD)
 - [ ] Initiera React-projekt

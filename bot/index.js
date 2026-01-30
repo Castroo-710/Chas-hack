@@ -1,7 +1,9 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+
+
 
 const client = new Client({
   intents: [
@@ -44,6 +46,8 @@ for (const file of listenerFiles) {
 
 // Hantera slash commands
 client.on('interactionCreate', async interaction => {
+  console.log(`[Interaction] Received: ${interaction.commandName} from ${interaction.user.username}`);
+
   if (!interaction.isChatInputCommand()) return;
 
   const command = client.commands.get(interaction.commandName);
@@ -54,9 +58,11 @@ client.on('interactionCreate', async interaction => {
   }
 
   try {
+    console.log(`[Command] Executing: ${interaction.commandName}`);
     await command.execute(interaction);
+    console.log(`[Command] Successfully executed: ${interaction.commandName}`);
   } catch (error) {
-    console.error(error);
+    console.error(`[Command Error] Error in ${interaction.commandName}:`, error);
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp({ content: 'Det uppstod ett fel när kommandot kördes!', ephemeral: true });
     } else {
@@ -65,7 +71,7 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-client.once('ready', () => {
+client.once(Events.ClientReady, () => {
   console.log(`Bot inloggad som ${client.user.tag}`);
 });
 
