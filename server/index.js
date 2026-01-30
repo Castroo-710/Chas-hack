@@ -19,6 +19,15 @@ const authRouter = require('./routes/auth');
 // Auth Routes
 app.use('/api/auth', authRouter);
 
+// Ingest Routes
+app.use('/api/ingest', require('./routes/ingest'));
+
+// Event Routes
+app.use('/api/events', require('./routes/events'));
+
+// Calendar Routes (Public ICS)
+app.use('/api/calendar', require('./routes/calendar'));
+
 // Basic Route
 app.get('/', (req, res) => {
   res.json({ message: 'CalSync API is running' });

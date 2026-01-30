@@ -33,7 +33,7 @@ const DEFAULT_ALARMS = [
  */
 async function parseEventFromText(text) {
   const today = new Date().toISOString();
-  
+
   const systemPrompt = `
     You are an intelligent event parser. Your job is to extract calendar event details from the user's input.
     
@@ -42,8 +42,8 @@ async function parseEventFromText(text) {
 
     Output must be valid JSON matching this schema:
     {
-      "title": "Short descriptive title",
-      "description": "Summary of the event details",
+      "title": "Clear and specific title for the event",
+      "description": "Short summary of the event details",
       "location": "Physical location or URL (if found)",
       "start_time": "ISO 8601 string (YYYY-MM-DDTHH:mm:ss)",
       "end_time": "ISO 8601 string (YYYY-MM-DDTHH:mm:ss) - Estimate 1h duration if not specified",
@@ -102,9 +102,9 @@ async function parseEventFromUrl(url) {
     text = text.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gim, "");   // Ta bort style
     text = text.replace(/<[^>]+>/g, "\n");                             // Ersätt taggar med nyrad
     text = text.replace(/\s+/g, " ").trim();                           // Snygga till whitespace
-    
+
     // Begränsa textlängd för att spara tokens
-    const truncatedText = text.substring(0, 8000); 
+    const truncatedText = text.substring(0, 8000);
 
     // 3. Skicka till AI
     return await parseEventFromText(`Source URL: ${url}\n\nPage Content:\n${truncatedText}`);
@@ -116,7 +116,7 @@ async function parseEventFromUrl(url) {
 }
 
 async function isEventMessage(text) {
-  return true; 
+  return true;
 }
 
 module.exports = {

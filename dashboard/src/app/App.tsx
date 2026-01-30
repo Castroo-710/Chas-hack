@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { EventsCalendar } from "@/app/components/EventsCalendar";
 import { EventsList } from "@/app/components/EventsList";
 import { PinnedEvents } from "@/app/components/PinnedEvents";
@@ -12,134 +12,60 @@ import { CalendarIcon, ListIcon, Plus, Pin, LogIn, User, Link2, Moon, Sun } from
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 
-// Mock data for events - sorted by date (closest first)
-const mockEvents: Event[] = [
-  {
-    id: "1",
-    title: "Team Standup Meeting",
-    date: new Date(2026, 0, 27),
-    startTime: "09:00 AM",
-    endTime: "09:30 AM",
-    location: "Conference Room A",
-    type: "meeting",
-    color: "#3b82f6",
-    description: "Daily standup to discuss progress and blockers.",
-    imageUrl: "https://images.unsplash.com/photo-1716703432455-3045789de738?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0ZWFtJTIwbWVldGluZyUyMGNvbmZlcmVuY2UlMjByb29tfGVufDF8fHx8MTc2OTc1OTg2M3ww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-  },
-  {
-    id: "2",
-    title: "Design Review Session",
-    date: new Date(2026, 0, 29),
-    startTime: "02:00 PM",
-    endTime: "03:30 PM",
-    location: "Virtual - Zoom",
-    type: "meeting",
-    color: "#3b82f6",
-    description: "Review the latest design mockups for the new dashboard feature.",
-    imageUrl: "https://images.unsplash.com/photo-1553877522-43269d4ea984?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkZXNpZ24lMjByZXZpZXclMjB3b3Jrc3BhY2V8ZW58MXx8fHwxNzY5NzY0MzU0fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-  },
-  {
-    id: "8",
-    title: "Code Review",
-    date: new Date(2026, 0, 30),
-    startTime: "03:00 PM",
-    endTime: "04:00 PM",
-    location: "Virtual",
-    type: "meeting",
-    color: "#3b82f6",
-    description: "Review pull requests and discuss code quality improvements.",
-    imageUrl: "https://images.unsplash.com/photo-1735815952441-224afdf53016?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2RlJTIwcmV2aWV3JTIwcHJvZ3JhbW1pbmd8ZW58MXx8fHwxNzY5NzY0MzU2fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-  },
-  {
-    id: "10",
-    title: "Doctor's Appointment",
-    date: new Date(2026, 1, 1),
-    startTime: "11:00 AM",
-    endTime: "12:00 PM",
-    location: "Medical Center",
-    type: "reminder",
-    color: "#eab308",
-    description: "Annual checkup appointment.",
-    imageUrl: "https://images.unsplash.com/photo-1615983276036-8dd65aa005a3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3ZWJpbmFyJTIwb25saW5lJTIwdHJhaW5pbmd8ZW58MXx8fHwxNzY5NzY0MzU2fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-  },
-  {
-    id: "6",
-    title: "Client Presentation",
-    date: new Date(2026, 1, 3),
-    startTime: "10:00 AM",
-    endTime: "11:30 AM",
-    location: "Client Office",
-    type: "meeting",
-    color: "#3b82f6",
-    description: "Present the final proposal and timeline to the client stakeholders.",
-    pinned: true,
-    imageUrl: "https://images.unsplash.com/photo-1758519288417-d359ac3c494d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMGNsaWVudCUyMHByZXNlbnRhdGlvbnxlbnwxfHx8fDE3Njk3NjQzNTV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-  },
-  {
-    id: "3",
-    title: "Tech Conference 2026",
-    date: new Date(2026, 1, 5),
-    startTime: "09:00 AM",
-    endTime: "05:00 PM",
-    location: "Convention Center",
-    type: "conference",
-    color: "#a855f7",
-    description: "Annual technology conference featuring keynote speakers and workshops.",
-    imageUrl: "https://images.unsplash.com/photo-1762968274962-20c12e6e8ecd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0ZWNobm9sb2d5JTIwY29uZmVyZW5jZSUyMGtleW5vdGV8ZW58MXx8fHwxNzY5NzY0MzU0fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-  },
-  {
-    id: "4",
-    title: "Sarah's Birthday Party",
-    date: new Date(2026, 1, 8),
-    startTime: "06:00 PM",
-    endTime: "09:00 PM",
-    location: "Downtown Restaurant",
-    type: "birthday",
-    color: "#ec4899",
-    description: "Birthday celebration dinner for Sarah. Don't forget the gift!",
-    imageUrl: "https://images.unsplash.com/photo-1650584997985-e713a869ee77?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiaXJ0aGRheSUyMHBhcnR5JTIwY2VsZWJyYXRpb258ZW58MXx8fHwxNzY5NzUxNjkyfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-  },
-  {
-    id: "7",
-    title: "Team Building Workshop",
-    date: new Date(2026, 1, 12),
-    startTime: "01:00 PM",
-    endTime: "04:00 PM",
-    location: "Outdoor Park",
-    type: "other",
-    color: "#6b7280",
-    description: "Quarterly team building activities and games.",
-    imageUrl: "https://images.unsplash.com/photo-1758582388621-6ea162744083?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0ZWFtJTIwYnVpbGRpbmclMjBvdXRkb29yJTIwYWN0aXZpdGllc3xlbnwxfHx8fDE3Njk3MTkxOTR8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-  },
-  {
-    id: "5",
-    title: "Project Deadline",
-    date: new Date(2026, 1, 14),
-    startTime: "11:59 PM",
-    endTime: "11:59 PM",
-    type: "reminder",
-    color: "#eab308",
-    description: "Final submission deadline for Q1 project deliverables.",
-    pinned: true,
-    imageUrl: "https://images.unsplash.com/photo-1624969862293-b749659ccc4e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkZWFkbGluZSUyMGNhbGVuZGFyJTIwcmVtaW5kZXJ8ZW58MXx8fHwxNzY5NzY0MzU1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-  },
-  {
-    id: "9",
-    title: "Product Launch Event",
-    date: new Date(2026, 1, 20),
-    startTime: "06:00 PM",
-    endTime: "09:00 PM",
-    location: "Grand Ballroom",
-    type: "conference",
-    color: "#a855f7",
-    description: "Official launch event for our new product line.",
-    pinned: true,
-    imageUrl: "https://images.unsplash.com/photo-1768508948485-a7adc1f3427f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuZXR3b3JraW5nJTIwZXZlbnQlMjBwcm9mZXNzaW9uYWx8ZW58MXx8fHwxNzY5NzIyMDYzfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-  },
-];
-
 export default function App() {
-  const [events, setEvents] = useState<Event[]>(mockEvents);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [pinnedEventIds, setPinnedEventIds] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pinnedEventIds');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+
+  // Fetch events from backend
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/api/events');
+        const data = await response.json();
+
+        if (data.events && Array.isArray(data.events)) {
+          const mappedEvents: Event[] = data.events.map((dbEvent: any) => {
+            const startDate = new Date(dbEvent.start_time);
+            const endDate = dbEvent.end_time ? new Date(dbEvent.end_time) : new Date(startDate.getTime() + 60 * 60 * 1000);
+            const id = dbEvent.id.toString();
+
+            return {
+              id,
+              title: dbEvent.title,
+              date: startDate,
+              startTime: startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              endTime: endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              location: dbEvent.location || 'Online',
+              type: 'other', // Default type
+              color: '#10b981', // Green for DB events
+              description: dbEvent.description,
+              pinned: pinnedEventIds.includes(id),
+              imageUrl: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1000&auto=format&fit=crop" // Default image
+            };
+          });
+
+          // Show only database events
+          setEvents(mappedEvents);
+        }
+      } catch (error) {
+        console.error("Failed to connect to backend:", error);
+      }
+    };
+
+    fetchEvents();
+  }, [pinnedEventIds]);
+
+  // Persist pins
+  useEffect(() => {
+    localStorage.setItem('pinnedEventIds', JSON.stringify(pinnedEventIds));
+  }, [pinnedEventIds]);
+
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -154,11 +80,53 @@ export default function App() {
     setIsAddDialogOpen(true);
   };
 
-  const handleEventAdd = (newEvent: Event) => {
-    setEvents([...events, newEvent]);
+  const handleEventAdd = async (newEvent: Event) => {
+    try {
+      // Combine date and time to create ISO strings
+      const startDateTime = new Date(newEvent.date);
+      const [startHour, startMinute] = newEvent.startTime.split(':');
+      startDateTime.setHours(parseInt(startHour), parseInt(startMinute));
+
+      const endDateTime = new Date(newEvent.date);
+      const [endHour, endMinute] = newEvent.endTime.split(':');
+      endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
+
+      // POST to backend
+      const response = await fetch('http://localhost:3000/api/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: newEvent.title,
+          description: newEvent.description,
+          location: newEvent.location,
+          startTime: startDateTime.toISOString(),
+          endTime: endDateTime.toISOString(),
+          discordUserId: null, // Dashboard events don't have a Discord user
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const id = data.event.id.toString();
+        // Add to local state with the ID from backend
+        setEvents([...events, { ...newEvent, id, pinned: pinnedEventIds.includes(id) }]);
+      } else {
+        console.error('Failed to create event:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error creating event:', error);
+    }
   };
 
   const handleTogglePin = (eventId: string) => {
+    setPinnedEventIds(prev =>
+      prev.includes(eventId)
+        ? prev.filter(id => id !== eventId)
+        : [...prev, eventId]
+    );
+
     setEvents(
       events.map((event) =>
         event.id === eventId ? { ...event, pinned: !event.pinned } : event
@@ -166,56 +134,126 @@ export default function App() {
     );
   };
 
+  const handleEventDelete = async (eventId: string) => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/events/${eventId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setEvents(events.filter((event) => event.id !== eventId));
+        setPinnedEventIds(prev => prev.filter(id => id !== eventId));
+        setIsDialogOpen(false);
+      } else {
+        console.error('Failed to delete event:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error deleting event:', error);
+    }
+  };
+
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isConnectAccountsOpen, setIsConnectAccountsOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const [connectedAccounts, setConnectedAccounts] = useState([
-    {
-      id: "discord",
-      name: "Discord",
-      icon: "🎮",
-      connected: false,
-      description: "Sync events from Discord servers and voice channels",
-    },
-    {
-      id: "slack",
-      name: "Slack",
-      icon: "💬",
-      connected: false,
-      description: "Import meetings and reminders from Slack channels",
-    },
-    {
-      id: "google",
-      name: "Google Calendar",
-      icon: "📅",
-      connected: false,
-      description: "Sync with your Google Calendar events",
-    },
-    {
-      id: "zoom",
-      name: "Zoom",
-      icon: "🎥",
-      connected: false,
-      description: "Automatically import scheduled Zoom meetings",
-    },
-    {
-      id: "teams",
-      name: "Microsoft Teams",
-      icon: "👥",
-      connected: false,
-      description: "Connect to Microsoft Teams meetings and events",
-    },
-    {
-      id: "github",
-      name: "GitHub",
-      icon: "🐙",
-      connected: false,
-      description: "Track milestones, releases, and project deadlines",
-    },
-  ]);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('isLoggedIn') === 'true';
+    }
+    return false;
+  });
+
+  const [userEmail, setUserEmail] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('userEmail') || "";
+    }
+    return "";
+  });
+
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('isDarkMode') === 'true';
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem('isDarkMode', isDarkMode.toString());
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    localStorage.setItem('isLoggedIn', isLoggedIn.toString());
+    localStorage.setItem('userEmail', userEmail);
+  }, [isLoggedIn, userEmail]);
+
+  const [connectedAccounts, setConnectedAccounts] = useState(() => {
+    const defaultAccounts = [
+      {
+        id: "discord",
+        name: "Discord",
+        icon: "🎮",
+        connected: false,
+        description: "Sync events from Discord servers and voice channels",
+        redirectUrl: "https://discord.com/oauth2/authorize?client_id=1466770397948154008&scope=bot&permissions=8"
+      },
+      {
+        id: "slack",
+        name: "Slack",
+        icon: "💬",
+        connected: false,
+        description: "Import meetings and reminders from Slack channels",
+      },
+      {
+        id: "google",
+        name: "Google Calendar",
+        icon: "📅",
+        connected: false,
+        description: "Sync with your Google Calendar events",
+      },
+      {
+        id: "zoom",
+        name: "Zoom",
+        icon: "🎥",
+        connected: false,
+        description: "Automatically import scheduled Zoom meetings",
+      },
+      {
+        id: "teams",
+        name: "Microsoft Teams",
+        icon: "👥",
+        connected: false,
+        description: "Connect to Microsoft Teams meetings and events",
+      },
+      {
+        id: "github",
+        name: "GitHub",
+        icon: "🐙",
+        connected: false,
+        description: "Track milestones, releases, and project deadlines",
+      },
+    ];
+
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('connectedAccounts');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Merge saved connection state with default account definitions (to keep icons/descriptions updated)
+        return defaultAccounts.map(def => {
+          const savedAcc = parsed.find((p: any) => p.id === def.id);
+          return savedAcc ? { ...def, connected: savedAcc.connected } : def;
+        });
+      }
+    }
+    return defaultAccounts;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('connectedAccounts', JSON.stringify(connectedAccounts));
+  }, [connectedAccounts]);
 
   const handleLogin = (email: string, password: string) => {
     // Mock login - in real app, this would call an API
@@ -261,67 +299,67 @@ export default function App() {
                 </p>
               </div>
               <div className="flex gap-2 items-center">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="gap-2"
-                onClick={handleToggleDarkMode}
-              >
-                {isDarkMode ? <Sun className="size-4" /> : <Moon className="size-4" />}
-                {isDarkMode ? "Light" : "Dark"}
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Pin className="size-4" />
-                Pinned
-                <Badge variant="secondary" className="ml-1">
-                  {pinnedEvents.length}
-                </Badge>
-              </Button>
-              <Button onClick={handleAddClick} variant="outline" size="sm" className="gap-2">
-                <Plus className="size-4" />
-                Add Event
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => setIsConnectAccountsOpen(true)}
-              >
-                <Link2 className="size-4" />
-                Connect
-                {connectedCount > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleToggleDarkMode}
+                >
+                  {isDarkMode ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                  {isDarkMode ? "Light" : "Dark"}
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Pin className="size-4" />
+                  Pinned
                   <Badge variant="secondary" className="ml-1">
-                    {connectedCount}
+                    {pinnedEvents.length}
                   </Badge>
+                </Button>
+                <Button onClick={handleAddClick} variant="outline" size="sm" className="gap-2">
+                  <Plus className="size-4" />
+                  Add Event
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setIsConnectAccountsOpen(true)}
+                >
+                  <Link2 className="size-4" />
+                  Connect
+                  {connectedCount > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {connectedCount}
+                    </Badge>
+                  )}
+                </Button>
+                {isLoggedIn ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={handleLogout}
+                  >
+                    <User className="size-4" />
+                    <span className="hidden md:inline">{userEmail}</span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setIsLoginOpen(true)}
+                  >
+                    <LogIn className="size-4" />
+                    Login
+                  </Button>
                 )}
-              </Button>
-              {isLoggedIn ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={handleLogout}
-                >
-                  <User className="size-4" />
-                  <span className="hidden md:inline">{userEmail}</span>
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => setIsLoginOpen(true)}
-                >
-                  <LogIn className="size-4" />
-                  Login
-                </Button>
-              )}
+              </div>
             </div>
+            <div></div>
           </div>
-          <div></div>
-        </div>
-        <div className="lg:hidden">
-          <div className="flex items-start justify-between">
+          <div className="lg:hidden">
+            <div className="flex items-start justify-between">
               <div>
                 <h1 className="text-2xl font-bold">Events Dashboard</h1>
                 <p className="text-muted-foreground">
@@ -329,9 +367,9 @@ export default function App() {
                 </p>
               </div>
               <div className="flex gap-2 items-center">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="gap-2"
                   onClick={handleToggleDarkMode}
                 >
@@ -457,6 +495,7 @@ export default function App() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onTogglePin={handleTogglePin}
+        onDelete={handleEventDelete}
       />
 
       {/* Add Event Dialog */}
