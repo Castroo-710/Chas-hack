@@ -1,4 +1,4 @@
--- CalSync Database Schema
+-- CalSync Database Schema (PostgreSQL)
 
 -- Användare
 CREATE TABLE IF NOT EXISTS users (

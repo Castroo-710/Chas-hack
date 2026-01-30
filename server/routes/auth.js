@@ -1,62 +1,60 @@
-const express = require('express');
 const jwt = require('jsonwebtoken');
 const { ensureUserExists, getUserById } = require('../db/index');
 const { authenticateToken } = require('../middleware/auth');
 
-const router = express.Router();
-
-// POST /api/auth/login
-// I ett riktigt scenario skulle detta vara en OAuth-callback.
-// För hackathon: Skicka { username: "mittnamn", discordId: "12345" } för att logga in/skapa konto.
-router.post('/login', (req, res) => {
-  const { username, discordId } = req.body;
-
-  if (!username || !discordId) {
-    return res.status(400).json({ error: 'Username och DiscordID krävs' });
-  }
-
-  try {
-    // Hitta eller skapa användare i DB
-    const user = ensureUserExists(discordId, username);
-
-    // Skapa JWT payload
-    const userForToken = { 
-      id: user.id, 
-      username: user.username,
-      discordId: user.discord_id 
-    };
-
-    // Signera token (giltig i 24h)
-    const accessToken = jwt.sign(userForToken, process.env.JWT_SECRET, { expiresIn: '24h' });
-
-    res.json({ 
-      accessToken, 
-      user: userForToken,
-      calendarUrl: `/api/calendar/${user.calendar_token}.ics`
-    });
-
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internt serverfel vid inloggning' });
-  }
-});
-
-// GET /api/auth/me
-// Test-endpoint för att se vem man är inloggad som
-router.get('/me', authenticateToken, (req, res) => {
-  // req.user kommer från authenticateToken middleware
-  const dbUser = getUserById(req.user.id);
+async function authRoutes(fastify, options) {
   
-  if (!dbUser) {
-    return res.status(404).json({ error: 'Användare hittades inte' });
-  }
+  // POST /api/auth/login
+  fastify.post('/login', async (request, reply) => {
+    const { username, discordId } = request.body;
 
-  res.json({
-    id: dbUser.id,
-    username: dbUser.username,
-    discordId: dbUser.discord_id,
-    calendarToken: dbUser.calendar_token
+    if (!username || !discordId) {
+      return reply.code(400).send({ error: 'Username och DiscordID krävs' });
+    }
+
+    try {
+      // Hitta eller skapa användare i DB
+      // Notera: ensureUserExists är nu async pga Postgres
+      const user = await ensureUserExists(discordId, username);
+
+      const userForToken = { 
+        id: user.id, 
+        username: user.username,
+        discordId: user.discord_id 
+      };
+
+      const accessToken = jwt.sign(userForToken, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+      return { 
+        accessToken, 
+        user: userForToken,
+        calendarUrl: `/api/calendar/${user.calendar_token}.ics`
+      };
+
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Internt serverfel vid inloggning' });
+    }
   });
-});
 
-module.exports = router;
+  // GET /api/auth/me
+  fastify.get('/me', {
+    preHandler: authenticateToken
+  }, async (request, reply) => {
+    // request.user sätts av authenticateToken
+    const dbUser = await getUserById(request.user.id);
+    
+    if (!dbUser) {
+      return reply.code(404).send({ error: 'Användare hittades inte' });
+    }
+
+    return {
+      id: dbUser.id,
+      username: dbUser.username,
+      discordId: dbUser.discord_id,
+      calendarToken: dbUser.calendar_token
+    };
+  });
+}
+
+module.exports = authRoutes;

@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { EventsCalendar } from "@/app/components/EventsCalendar";
 import { EventsList } from "@/app/components/EventsList";
 import { PinnedEvents } from "@/app/components/PinnedEvents";
+import { WatchedChannels } from "@/app/components/WatchedChannels";
+import { ActivityMonitoring } from "@/app/components/ActivityMonitoring";
 import { EventDialog } from "@/app/components/EventDialog";
 import { AddEventDialog } from "@/app/components/AddEventDialog";
-import { LoginDialog } from "@/app/components/LoginDialog";
 import { ConnectedAccountsDialog } from "@/app/components/ConnectedAccountsDialog";
+import { AuthDialog } from "@/app/components/AuthDialog";
 import { Event } from "@/app/components/EventCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
-import { CalendarIcon, ListIcon, Plus, Pin, LogIn, User, Link2, Moon, Sun } from "lucide-react";
+import { CalendarIcon, ListIcon, Plus, Pin, Moon, Sun, LogIn, LogOut } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 
@@ -70,6 +72,16 @@ export default function App() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isConnectAccountsOpen, setIsConnectAccountsOpen] = useState(false);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Fetch real events when user is logged in
+  useEffect(() => {
+    if (user) {
+      // TODO: Fetch real events from API
+    }
+  }, [user]);
 
   const handleEventClick = (event: Event) => {
     setSelectedEvent(event);
@@ -255,18 +267,6 @@ export default function App() {
     localStorage.setItem('connectedAccounts', JSON.stringify(connectedAccounts));
   }, [connectedAccounts]);
 
-  const handleLogin = (email: string, password: string) => {
-    // Mock login - in real app, this would call an API
-    setIsLoggedIn(true);
-    setUserEmail(email);
-    setIsLoginOpen(false);
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUserEmail("");
-  };
-
   const handleToggleAccount = (accountId: string) => {
     setConnectedAccounts(
       connectedAccounts.map((account) =>
@@ -285,8 +285,12 @@ export default function App() {
   const pinnedEvents = events.filter((event) => event.pinned);
   const connectedCount = connectedAccounts.filter((a) => a.connected).length;
 
+  if (isLoading) {
+    return <div className="h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background text-foreground">
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
@@ -393,30 +397,32 @@ export default function App() {
                   <Link2 className="size-4" />
                   {connectedCount > 0 && (
                     <Badge variant="secondary" className="ml-1">
-                      {connectedCount}
+                      {pinnedEvents.length}
                     </Badge>
-                  )}
+                  </Button>
+                  <Button onClick={handleAddClick} variant="outline" size="sm" className="gap-2">
+                    <Plus className="size-4" />
+                    <span className="hidden md:inline">Add Event</span>
+                  </Button>
+                </>
+              )}
+
+              {user ? (
+                <div className="flex gap-2 items-center ml-2 border-l pl-4">
+                   <div className="hidden md:flex flex-col items-end">
+                     <span className="text-sm font-medium">{user.username}</span>
+                     <span className="text-xs text-muted-foreground">{user.email}</span>
+                   </div>
+                  <Button onClick={logout} variant="outline" size="sm" className="text-destructive hover:bg-destructive/10">
+                    <LogOut className="size-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={() => setIsAuthDialogOpen(true)} className="gap-2 ml-2">
+                  <LogIn className="size-4" />
+                  Logga in
                 </Button>
-                {isLoggedIn ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={handleLogout}
-                  >
-                    <User className="size-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => setIsLoginOpen(true)}
-                  >
-                    <LogIn className="size-4" />
-                  </Button>
-                )}
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -424,72 +430,92 @@ export default function App() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
-        {/* Desktop Layout */}
-        <div className="hidden lg:grid lg:grid-cols-[1fr,400px]">
-          <div className="border-r flex gap-6 p-6">
-            <div className="flex-1">
-              <EventsCalendar
-                events={events}
-                selectedDate={selectedDate}
-                onDateSelect={setSelectedDate}
-                onEventClick={handleEventClick}
-              />
-            </div>
-            <div className="w-[300px]">
-              <PinnedEvents events={events} onEventClick={handleEventClick} />
-            </div>
+        {!user ? (
+          <div className="h-full flex flex-col items-center justify-center space-y-4 p-8 text-center">
+             <div className="bg-muted p-6 rounded-full">
+                <CalendarIcon className="size-12 text-muted-foreground" />
+             </div>
+             <h2 className="text-2xl font-bold">Välkommen till CalSync</h2>
+             <p className="text-muted-foreground max-w-md">
+               Logga in eller skapa ett konto för att hantera dina events och kalendrar.
+             </p>
+             <Button onClick={() => setIsAuthDialogOpen(true)} size="lg" className="gap-2">
+               <LogIn className="size-5" />
+               Kom igång
+             </Button>
           </div>
-          <div>
-            <EventsList
-              events={events}
-              onEventClick={handleEventClick}
-              onAddClick={handleAddClick}
-              onTogglePin={handleTogglePin}
-            />
-          </div>
-        </div>
-
-        {/* Mobile/Tablet Layout */}
-        <div className="lg:hidden h-full">
-          <Tabs defaultValue="calendar" className="h-full flex flex-col">
-            <div className="border-b px-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="calendar" className="gap-2">
-                  <CalendarIcon className="size-4" />
-                  Calendar
-                </TabsTrigger>
-                <TabsTrigger value="list" className="gap-2">
-                  <ListIcon className="size-4" />
-                  Events
-                </TabsTrigger>
-              </TabsList>
-            </div>
-            <TabsContent value="calendar" className="flex-1 m-0 overflow-hidden">
-              <div className="h-full overflow-y-auto">
-                <EventsCalendar
-                  events={events}
-                  selectedDate={selectedDate}
-                  onDateSelect={setSelectedDate}
-                  onEventClick={handleEventClick}
-                />
-                <div className="border-t">
+        ) : (
+          <>
+            {/* Desktop Layout */}
+            <div className="hidden lg:grid lg:grid-cols-[1fr,400px] h-full">
+              <div className="border-r flex gap-6 p-6 overflow-y-auto">
+                <div className="flex-1">
+                  <EventsCalendar
+                    events={events}
+                    selectedDate={selectedDate}
+                    onDateSelect={setSelectedDate}
+                    onEventClick={handleEventClick}
+                  />
+                </div>
+                <div className="w-[300px] space-y-6">
                   <PinnedEvents events={events} onEventClick={handleEventClick} />
+                  <ActivityMonitoring />
+                  <WatchedChannels />
                 </div>
               </div>
-            </TabsContent>
-            <TabsContent value="list" className="flex-1 m-0 overflow-hidden">
-              <EventsList
-                events={events}
-                onEventClick={handleEventClick}
-                onAddClick={handleAddClick}
-                onTogglePin={handleTogglePin}
-              />
-            </TabsContent>
-          </Tabs>
-        </div>
+              <div className="p-6 overflow-y-auto">
+                <EventsList
+                  events={events}
+                  onEventClick={handleEventClick}
+                  onAddClick={handleAddClick}
+                  onTogglePin={handleTogglePin}
+                />
+              </div>
+            </div>
+
+            {/* Mobile/Tablet Layout */}
+            <div className="lg:hidden h-full">
+              <Tabs defaultValue="calendar" className="h-full flex flex-col">
+                <div className="border-b px-4 bg-card">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="calendar" className="gap-2">
+                      <CalendarIcon className="size-4" />
+                      Calendar
+                    </TabsTrigger>
+                    <TabsTrigger value="list" className="gap-2">
+                      <ListIcon className="size-4" />
+                      Events
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+                <TabsContent value="calendar" className="flex-1 m-0 overflow-hidden">
+                  <div className="h-full overflow-y-auto p-4 space-y-6">
+                    <EventsCalendar
+                      events={events}
+                      selectedDate={selectedDate}
+                      onDateSelect={setSelectedDate}
+                      onEventClick={handleEventClick}
+                    />
+                    <PinnedEvents events={events} onEventClick={handleEventClick} />
+                    <ActivityMonitoring />
+                    <WatchedChannels />
+                  </div>
+                </TabsContent>
+                <TabsContent value="list" className="flex-1 m-0 overflow-hidden">
+                  <EventsList
+                    events={events}
+                    onEventClick={handleEventClick}
+                    onAddClick={handleAddClick}
+                    onTogglePin={handleTogglePin}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Event Details Dialog */}
+      {/* Dialogs */}
       <EventDialog
         event={selectedEvent}
         open={isDialogOpen}
@@ -497,27 +523,20 @@ export default function App() {
         onTogglePin={handleTogglePin}
         onDelete={handleEventDelete}
       />
-
-      {/* Add Event Dialog */}
       <AddEventDialog
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onEventAdd={handleEventAdd}
       />
-
-      {/* Login Dialog */}
-      <LoginDialog
-        open={isLoginOpen}
-        onOpenChange={setIsLoginOpen}
-        onLogin={handleLogin}
-      />
-
-      {/* Connected Accounts Dialog */}
       <ConnectedAccountsDialog
         open={isConnectAccountsOpen}
         onOpenChange={setIsConnectAccountsOpen}
         connectedAccounts={connectedAccounts}
         onToggleAccount={handleToggleAccount}
+      />
+      <AuthDialog
+        open={isAuthDialogOpen}
+        onOpenChange={setIsAuthDialogOpen}
       />
     </div>
   );
