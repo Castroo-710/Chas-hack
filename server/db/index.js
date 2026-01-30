@@ -1,5 +1,5 @@
 /**
- * index.js - Database connection and helpers (PostgreSQL Version)
+ * index.js - Database connection and helpers! (PostgreSQL Version)
  */
 const { Pool } = require('pg');
 const path = require('path');
