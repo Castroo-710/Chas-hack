@@ -1,81 +1,136 @@
 /**
- * Database connection och helpers
+ * index.js - Database connection and helpers (PostgreSQL Version)
  */
-
-const Database = require('better-sqlite3');
+const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 require('dotenv').config();
 
-const dbPath = process.env.DATABASE_PATH || './server/db/database.sqlite';
-const db = new Database(dbPath);
+console.log("🔌 Initializing Database Module..."); // Instant log to prove it's running
 
-// Kör schema vid uppstart
-function initDatabase() {
-  const schemaPath = path.join(__dirname, 'schema.sql');
-  const schema = fs.readFileSync(schemaPath, 'utf-8');
-  db.exec(schema);
-  console.log('Database initialized');
+// 1. Connection Setup
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL, 
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+// 2. Database Initialization (Robust File Finding)
+async function initDatabase() {
+  const client = await pool.connect();
+  try {
+    // We try to find schema.sql in 3 likely locations to prevent path errors
+    const possiblePaths = [
+      path.join(__dirname, 'schema.sql'),       // Same folder as index.js
+      path.join(__dirname, '../schema.sql'),    // One folder up
+      path.join(process.cwd(), 'schema.sql')    // Project root where you run 'node'
+    ];
+
+    let schemaPath = null;
+
+    // Loop through paths to find the file
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        schemaPath = p;
+        break;
+      }
+    }
+
+    if (!schemaPath) {
+      console.error(`❌ CRITICAL ERROR: 'schema.sql' was not found.`);
+      console.error(`Checked locations:`);
+      possiblePaths.forEach(p => console.error(` - ${p}`));
+      console.error(`📂 Files in current directory (${__dirname}):`, fs.readdirSync(__dirname));
+      return;
+    }
+
+    console.log(`📜 Found schema at: ${schemaPath}`);
+    const schema = fs.readFileSync(schemaPath, 'utf-8');
+    
+    console.log('⏳ Executing schema on Aiven PostgreSQL...');
+    await client.query(schema);
+    console.log('✅ PostgreSQL Database initialized (Stockholm Timezone Active)');
+    
+  } catch (err) {
+    console.error('❌ Error initializing database:', err);
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
-// Users
-function ensureUserExists(discordId, username) {
-  // Kolla om användaren finns
-  const user = db.prepare('SELECT * FROM users WHERE discord_id = ?').get(discordId);
-  
-  if (user) return user;
+// 3. Diagnostic Test
+async function runDiagnostic() {
+  try {
+    console.log('🧪 Running Database Diagnostic...');
+    
+    // Check Timezone
+    const timeRes = await pool.query("SELECT NOW(), CURRENT_SETTING('timezone') as zone");
+    console.log(`🕒 Database Time: ${timeRes.rows[0].now}`);
+    console.log(`🌍 Database Zone: ${timeRes.rows[0].zone}`);
 
-  // Skapa ny användare om den inte finns
-  // Generera en slumpmässig calendar_token
-  const token = require('crypto').randomBytes(16).toString('hex');
-  
-  const stmt = db.prepare(`
+    // Check User Creation
+    const testUser = await ensureUserExists('123456789', 'Stockholm_Tester');
+    console.log('👤 User Write/Read Test:', testUser.username === 'Stockholm_Tester' ? 'PASSED' : 'FAILED');
+
+    console.log('✅ Diagnostic Complete. Check DBeaver for tables!');
+  } catch (err) {
+    console.error('❌ Diagnostic Failed:', err.message);
+  }
+}
+
+// 4. Helper Functions
+async function ensureUserExists(discordId, username) {
+  const res = await pool.query('SELECT * FROM users WHERE discord_id = $1', [discordId]);
+  if (res.rows.length > 0) return res.rows[0];
+
+  const token = crypto.randomBytes(16).toString('hex');
+  const insertQuery = `
     INSERT INTO users (username, discord_id, calendar_token)
-    VALUES (?, ?, ?)
-  `);
-  stmt.run(username, discordId, token);
-  
-  return db.prepare('SELECT * FROM users WHERE discord_id = ?').get(discordId);
+    VALUES ($1, $2, $3)
+    RETURNING *
+  `;
+  const newUser = await pool.query(insertQuery, [username, discordId, token]);
+  return newUser.rows[0];
 }
 
-// Watched Channels
-function addWatchedChannel(guildId, channelId, channelName, discordId) {
-  const stmt = db.prepare(`
-    INSERT OR IGNORE INTO watched_channels (guild_id, channel_id, channel_name, user_discord_id)
-    VALUES (?, ?, ?, ?)
-  `);
-  return stmt.run(guildId, channelId, channelName, discordId);
+async function addWatchedChannel(guildId, channelId, channelName, discordId) {
+  const query = `
+    INSERT INTO watched_channels (guild_id, channel_id, channel_name, user_discord_id)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (channel_id, user_discord_id) DO NOTHING
+  `;
+  return await pool.query(query, [guildId, channelId, channelName, discordId]);
 }
 
-function removeWatchedChannel(channelId, discordId) {
-  const stmt = db.prepare('DELETE FROM watched_channels WHERE channel_id = ? AND user_discord_id = ?');
-  return stmt.run(channelId, discordId);
+async function removeWatchedChannel(channelId, discordId) {
+  const query = 'DELETE FROM watched_channels WHERE channel_id = $1 AND user_discord_id = $2';
+  return await pool.query(query, [channelId, discordId]);
 }
 
-// Hämta alla kanaler som en specifik användare bevakar
-function getUserWatchedChannels(discordId) {
-  const stmt = db.prepare('SELECT * FROM watched_channels WHERE user_discord_id = ?');
-  return stmt.all(discordId);
+async function getUserWatchedChannels(discordId) {
+  const res = await pool.query('SELECT * FROM watched_channels WHERE user_discord_id = $1', [discordId]);
+  return res.rows;
 }
 
-// Hämta alla användare som bevakar en specifik kanal (för Listener)
-function getUsersWatchingChannel(channelId) {
-  const stmt = db.prepare('SELECT user_discord_id FROM watched_channels WHERE channel_id = ?');
-  return stmt.all(channelId);
+async function getUsersWatchingChannel(channelId) {
+  const res = await pool.query('SELECT user_discord_id FROM watched_channels WHERE channel_id = $1', [channelId]);
+  return res.rows;
 }
 
-function isChannelWatchedAnywhere(channelId) {
-  const stmt = db.prepare('SELECT 1 FROM watched_channels WHERE channel_id = ? LIMIT 1');
-  return stmt.get(channelId) !== undefined;
+async function isChannelWatchedAnywhere(channelId) {
+  const res = await pool.query('SELECT 1 FROM watched_channels WHERE channel_id = $1 LIMIT 1', [channelId]);
+  return res.rows.length > 0;
 }
 
-// Events
-function addEvent(event) {
-  const stmt = db.prepare(`
+async function addEvent(event) {
+  const query = `
     INSERT INTO events (discord_user_id, title, description, location, start_time, end_time, source_url)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-  return stmt.run(
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+  `;
+  return await pool.query(query, [
     event.discordUserId,
     event.title,
     event.description,
@@ -83,12 +138,22 @@ function addEvent(event) {
     event.startTime,
     event.endTime,
     event.sourceUrl
-  );
+  ]);
 }
 
+// 5. Startup Execution
+(async () => {
+  try {
+    await initDatabase();
+    await runDiagnostic();
+    console.log('🚀 App ready for Discord events.');
+  } catch (e) {
+    console.error("Critical error during startup:", e);
+  }
+})();
+
 module.exports = {
-  db,
-  initDatabase,
+  pool,
   ensureUserExists,
   addWatchedChannel,
   removeWatchedChannel,
