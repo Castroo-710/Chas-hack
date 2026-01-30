@@ -12,10 +12,10 @@ Vi bygger en tjänst som lyssnar på Discord-kanaler och tar emot webb-länkar. 
 |--------|-----|
 | [x] | Grundstruktur |
 | [x] | Discord Bot (Listener & Commands) |
-| [ ] | Backend API (Auth klart, Ingest/ICS kvar) |
-| [ ] | ICS Feed Generator |
-| [ ] | AI Agent / Scraper |
-| [ ] | Dashboard UI |
+| [x] | Backend API - Auth & DB |
+| [ ] | Backend API - Ingest & Calendar (KVAR) |
+| [ ] | AI Agent / Scraper (KVAR) |
+| [ ] | Dashboard UI (Återställd/Ej påbörjad) |
 
 ---
 
@@ -39,36 +39,35 @@ Vi bygger en tjänst som lyssnar på Discord-kanaler och tar emot webb-länkar. 
 
 ### Fas 2: Parallellt arbete
 
-#### Person 1 - Discord Bot
+#### Person 1 - Discord Bot (KLAR)
 - [x] Implementera `/watch` kommando (Personlig prenumeration)
 - [x] Implementera `/list` kommando (Visa mina kanaler + ICS länk)
 - [x] Lyssna på `messageCreate` (med URL-filter)
 - [x] Skicka potentiella event-texter till Backend API (`POST /api/ingest`)
 
-#### Person 2 - Backend API & DB
+#### Person 2 - Backend API & DB (PÅGÅENDE)
 - [x] Sätt upp SQLite med `better-sqlite3`
 - [x] Skapa tabeller: `users`, `watched_channels`, `events`
 - [x] Implementera JWT Auth (`/api/auth/login`, `/api/auth/me`)
 - [x] Skapa Auth Middleware
-- [ ] `POST /api/ingest` - Ta emot råtext, skicka till AI-service, spara svar
-- [ ] `GET /api/calendar/:token.ics` - Generera ICS-fil dynamiskt
-- [ ] CRUD-endpoints för Dashboarden (redigera felaktiga events)
+- [ ] `POST /api/ingest` - Endpoint för att ta emot data från boten (Saknas)
+- [ ] `GET /api/calendar/:token.ics` - Generera ICS-fil dynamiskt (Saknas)
+- [ ] CRUD-endpoints för Dashboarden (Redigera/Ta bort events)
 
-#### Person 3 - AI & Scraping
+#### Person 3 - AI & Scraping (EJ PÅBÖRJAD)
+*OBS: Gamla filer finns i `server/services/` men måste skrivas om.*
 - [ ] Konfigurera OpenRouter / OpenAI klient
-- [ ] Skapa prompt för att extrahera JSON (Titel, Start, Slut, Beskrivning) från ostrukturerad text
-- [ ] Bygg "Scrape URL" funktion (hämta HTML-text -> AI -> JSON)
-- [ ] Hantera datumformat (hårdkodat till Svensk tid/CET)
+- [ ] Skapa prompt för att extrahera JSON (Titel, Start, Slut, Beskrivning)
+- [ ] Implementera `parseEventText(text)` service
 
-#### Person 4 - Dashboard
-- [ ] Inloggning (enkel, t.ex. JWT eller bara en "User ID" generator för hackathon)
-- [ ] Vy: "Mina Events" (Lista där man kan ta bort/redigera det AI hittat)
-- [ ] Vy: "Lägg till Källa" (Klistra in URL eller instruktioner för boten)
-- [ ] Komponent: "Din Kalender Länk" (Kopiera-knapp för .ics url)
+#### Person 4 - Dashboard (EJ PÅBÖRJAD)
+- [ ] Initiera React-projekt
+- [ ] Bygg Login UI (koppla mot `/api/auth/login`)
+- [ ] Bygg Kalendervy
 
 ### Fas 3: Integration & Polish
+- [ ] Testa flödet: Bot -> Ingest -> AI -> DB -> ICS
 - [ ] Testa att prenumerera på kalendern i iPhone/Google
-- [ ] Finjustera AI-prompts för bättre datumtolkning
 
 ---
 
@@ -91,20 +90,23 @@ Dashboard:  React + Vite
 - id, username, discord_id, calendar_token (unique)
 
 **watched_channels**
-- id, channel_id, user_discord_id (who subscribed), guild_id
+- id, channel_id, user_discord_id, guild_id
 
 **events**
 - id, discord_user_id (owner), title, description, start_time, end_time, source_url
 
 ---
 
-## API Endpoints
+## API Endpoints (Implementerade)
 
 **Auth**
-- `POST /api/auth/login` (Body: `{username, discordId}`)
-- `GET /api/auth/me` (Header: `Authorization: Bearer <token>`)
+- `POST /api/auth/login`
+- `GET /api/auth/me`
 
----
+## API Endpoints (Att göra)
 
-## Git Workflow
-*Samma som tidigare: arbeta i feature-branches, merga till dev.*
+**Ingest**
+- `POST /api/ingest` (Tar emot `{text, sourceUrl, channelId, authorName}`)
+
+**Calendar**
+- `GET /api/calendar/:token.ics`

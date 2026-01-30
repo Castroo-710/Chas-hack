@@ -1,23 +1,21 @@
 const jwt = require('jsonwebtoken');
 
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  // Token kommer oftast som "Bearer <token>"
+// Fastify decorator/preHandler style
+async function authenticateToken(request, reply) {
+  const authHeader = request.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  if (token == null) {
-    return res.status(401).json({ error: 'Ingen token tillhandahölls (Unauthorized)' });
+  if (!token) {
+    reply.code(401).send({ error: 'Ingen token tillhandahölls (Unauthorized)' });
+    return;
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Ogiltig token (Forbidden)' });
-    }
-
-    // Spara användarinfon i request-objektet så nästa funktion kan använda den
-    req.user = user;
-    next();
-  });
+  try {
+    const user = jwt.verify(token, process.env.JWT_SECRET);
+    request.user = user;
+  } catch (err) {
+    reply.code(403).send({ error: 'Ogiltig token (Forbidden)' });
+  }
 }
 
 module.exports = { authenticateToken };
