@@ -43,11 +43,11 @@ Vi bygger en tjänst som lyssnar på Discord-kanaler och tar emot webb-länkar. 
 - [x] Implementera `/watch` kommando (Personlig prenumeration)
 - [x] Implementera `/list` kommando (Visa mina kanaler + ICS länk)
 - [x] Lyssna på `messageCreate` (med URL-filter)
-- [ ] Skicka potentiella event-texter till Backend API (`POST /api/ingest`)
+- [x] Skicka potentiella event-texter till Backend API (`POST /api/ingest`)
 
 #### Person 2 - Backend API & DB
 - [x] Sätt upp SQLite med `better-sqlite3`
-- [x] Skapa tabeller: `users`, `watched_channels` (prenumerationer), `events`
+- [x] Skapa tabeller: `users`, `watched_channels`, `events`
 - [ ] `POST /api/ingest` - Ta emot råtext, skicka till AI-service, spara svar
 - [ ] `GET /api/calendar/:token.ics` - Generera ICS-fil dynamiskt
 - [ ] CRUD-endpoints för Dashboarden (redigera felaktiga events)
